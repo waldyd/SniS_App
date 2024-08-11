@@ -31,7 +31,7 @@ st.write("The name on your smoothie will be: ", name_on_order)
 # session = get_active_session()
 cnx = st.connection("snowflake")
 session = cnx.session()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))#.collect()
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'),col('SEARCH_ON'))#.collect()
 #st.dataframe(data=my_dataframe, use_container_width=True)
 
 #options = my_dataframe['FRUIT_NAME'].tolist()
@@ -39,6 +39,10 @@ my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT
 #st.write(options[0])
 #default = [options[0]] if options else None
 #st.write(default)
+
+pd_df = my_dataframe.to_pandas()
+#st.dataframe(data=pd_df, use_container_width=True)
+#st.stop()
 
 # Create a multiselect widget
 ingredients_list = st.multiselect('Choose up to 5 ingredients:'
@@ -55,8 +59,17 @@ if ingredients_list:
 
     ingredients_string = ''
     
-    for fruit_choosen in ingredients_list:
-        ingredients_string += fruit_choosen + ' '
+    for fruit_chosen in ingredients_list:
+        ingredients_string += fruit_chosen + ' '
+
+        search_on=pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
+
+        st.subheader('{} Nutririon Information'.format(fruit_chosen))
+
+        #st.write("https://fruityvice.com/api/fruit/{}".format(fruit_chosen))
+        fruityvice_response = requests.get("https://fruityvice.com/api/fruit/{}".format(search_on), verify=False)
+        fv_df = st.dataframe(data=fruityvice_response.json(), use_container_width=True)
 
     #st.write(ingredients_string)
 
@@ -73,8 +86,3 @@ if ingredients_list:
         session.sql(my_insert_stmt).collect()
         
         st.success('Your Smoothie is ordered, {}!'.format(name_on_order), icon="✅")
-
-fruityvice_response = requests.get("https://fruityvice.com/api/fruit/watermelon")
-#fruityvice_response = requests.get("https://fruityvice.com/api/fruit/watermelon", verify=False)
-#st.text(fruityvice_response.json())
-fv_df = st.dataframe(fruityvice_response.json(), use_container_width=True)
